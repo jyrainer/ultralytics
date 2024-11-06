@@ -551,9 +551,15 @@ class LetterBox:
         """Return updated labels and image with added border."""
         if labels is None:
             labels = {}
-        img = labels.get('img') if image is None else image
-        shape = img.shape[:2]  # current shape [height, width]
-        new_shape = labels.pop('rect_shape', self.new_shape)
+        try:
+            img = labels.get('img') if image is None else image
+            shape = img.shape[:2]  # current shape [height, width]
+            new_shape = labels.pop('rect_shape', self.new_shape)
+        except:  # classify 처리
+            img = labels
+            shape = img.shape[:2]
+            new_shape = self.new_shape
+        
         if isinstance(new_shape, int):
             new_shape = (new_shape, new_shape)
 
@@ -576,8 +582,6 @@ class LetterBox:
         if self.center:
             dw /= 2  # divide padding into 2 sides
             dh /= 2
-        if labels.get('ratio_pad'):
-            labels['ratio_pad'] = (labels['ratio_pad'], (dw, dh))  # for evaluation
 
         if shape[::-1] != new_unpad:  # resize
             img = cv2.resize(img, new_unpad, interpolation=cv2.INTER_CUBIC)
@@ -587,10 +591,15 @@ class LetterBox:
                                  value=(114, 114, 114))  # add border
 
         if len(labels):
-            labels = self._update_labels(labels, ratio, dw, dh)
-            labels['img'] = img
-            labels['resized_shape'] = new_shape
-            return labels
+            try:
+                if labels.get('ratio_pad'):
+                    labels['ratio_pad'] = (labels['ratio_pad'], (dw, dh))  # for evaluation
+                labels = self._update_labels(labels, ratio, dw, dh)
+                labels['img'] = img
+                labels['resized_shape'] = new_shape
+                return labels
+            except:
+                return img
         else:
             return img
 
@@ -801,10 +810,10 @@ def classify_transforms(size=224, mean=(0.0, 0.0, 0.0), std=(1.0, 1.0, 1.0)):  #
     if not isinstance(size, int):
         raise TypeError(f'classify_transforms() size {size} must be integer, not (list, tuple)')
     if any(mean) or any(std):
-        return T.Compose([CenterCrop(size), ToTensor(), T.Normalize(mean, std, inplace=True)])
+        return T.Compose([LetterBox(new_shape=(size,size), scaleup = True, center = True), ToTensor(), T.Normalize(mean, std, inplace=True)])
         # return T.Compose([ToTensor(), T.Normalize(mean, std, inplace=True)])
     else:
-        return T.Compose([CenterCrop(size), ToTensor()])
+        return T.Compose([LetterBox(new_shape=(size,size), scaleup = True, center = True), ToTensor()])
         # return T.Compose([ToTensor()])
 
 
@@ -816,7 +825,7 @@ def hsv2colorjitter(h, s, v):
 def classify_albumentations(
         augment=True,
         size=224,
-        scale=(0.08, 1.0),
+        scale=(1.0, 1.0),
         hflip=0.5,
         vflip=0.0,
         hsv_h=0.015,  # image HSV-Hue augmentation (fraction)
@@ -860,7 +869,7 @@ def classify_albumentations(
 class ClassifyLetterBox:
     """YOLOv8 LetterBox class for image preprocessing, i.e. T.Compose([LetterBox(size), ToTensor()])"""
 
-    def __init__(self, size=(640, 640), auto=False, stride=32):
+    def __init__(self, size=(224, 224), auto=False, stride=32):
         """Resizes image and crops it to center with max dimensions 'h' and 'w'."""
         super().__init__()
         self.h, self.w = (size, size) if isinstance(size, int) else size
