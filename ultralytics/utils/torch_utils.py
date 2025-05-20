@@ -590,13 +590,14 @@ def strip_optimizer(f: Union[str, Path] = "best.pt", s: str = "", updates: dict 
     # x['model'].args = x['train_args']
 
     # Save
+    save_pt_path = s or f
     combined = {**metadata, **x, **(updates or {})}
-    torch.save(combined, s or f)  # combine dicts (prefer to the right)
-    mb = os.path.getsize(s or f) / 1e6  # file size
+    torch.save(combined, save_pt_path)  # combine dicts (prefer to the right)
+    mb = os.path.getsize(save_pt_path) / 1e6  # file size
     LOGGER.info(f"Optimizer stripped from {f},{f' saved as {s},' if s else ''} {mb:.1f}MB")
     
     # Update model and no transform
-    f = "best_no_transform.pt"
+    now_f = save_pt_path.replace(".pt", "_no_transforms.pt")
     if x.get("ema"):
         del x["ema"].transforms
         x["model"] = x["ema"]  # replace model with EMA
@@ -618,8 +619,8 @@ def strip_optimizer(f: Union[str, Path] = "best.pt", s: str = "", updates: dict 
 
     # Save
     combined = {**metadata, **x, **(updates or {})}
-    torch.save(combined, s or f)  # combine dicts (prefer to the right)
-    mb = os.path.getsize(s or f) / 1e6  # file size
+    torch.save(combined, now_f)  # combine dicts (prefer to the right)
+    mb = os.path.getsize(now_f) / 1e6  # file size
     LOGGER.info(f"Optimizer stripped from {f},{f' saved as {s},' if s else ''} {mb:.1f}MB")
     return combined
 
