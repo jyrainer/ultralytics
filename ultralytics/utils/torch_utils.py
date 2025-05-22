@@ -597,7 +597,7 @@ def strip_optimizer(f: Union[str, Path] = "best.pt", s: str = "", updates: dict 
     LOGGER.info(f"Optimizer stripped from {f},{f' saved as {s},' if s else ''} {mb:.1f}MB")
     
     # Update model and no transform
-    now_f = save_pt_path.replace(".pt", "_no_transforms.pt")
+    now_f = str(save_pt_path).replace(".pt", "_no_transforms.pt")
     if x.get("ema"):
         del x["ema"].transforms
         x["model"] = x["ema"]  # replace model with EMA
