@@ -1,4 +1,4 @@
-# Ultralytics YOLO 🚀, AGPL-3.0 license
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import math
 import random
@@ -271,9 +271,9 @@ class Compose:
         """
         assert isinstance(index, (int, list)), f"The indices should be either list or int type but got {type(index)}"
         if isinstance(index, list):
-            assert isinstance(
-                value, list
-            ), f"The indices should be the same type as values, but got {type(index)} and {type(value)}"
+            assert isinstance(value, list), (
+                f"The indices should be the same type as values, but got {type(index)} and {type(value)}"
+            )
         if isinstance(index, int):
             index, value = [index], [value]
         for i, v in zip(index, value):
@@ -441,7 +441,8 @@ class BaseMixTransform:
         """
         raise NotImplementedError
 
-    def _update_label_text(self, labels):
+    @staticmethod
+    def _update_label_text(labels):
         """
         Updates label text and class IDs for mixed labels in image augmentation.
 
@@ -641,7 +642,7 @@ class Mosaic(BaseMixTransform):
                 c = s - w, s + h0 - h, s, s + h0
 
             padw, padh = c[:2]
-            x1, y1, x2, y2 = (max(x, 0) for x in c)  # allocate coords
+            x1, y1, x2, y2 = (max(x, 0) for x in c)  # allocate coordinates
 
             img3[y1:y2, x1:x2] = img[y1 - padh :, x1 - padw :]  # img3[ymin:ymax, xmin:xmax]
             # hp, wp = h, w  # height, width previous for next iteration
@@ -770,7 +771,7 @@ class Mosaic(BaseMixTransform):
                 c = s - w, s + h0 - hp - h, s, s + h0 - hp
 
             padw, padh = c[:2]
-            x1, y1, x2, y2 = (max(x, 0) for x in c)  # allocate coords
+            x1, y1, x2, y2 = (max(x, 0) for x in c)  # allocate coordinates
 
             # Image
             img9[y1:y2, x1:x2] = img[y1 - padh :, x1 - padw :]  # img9[ymin:ymax, xmin:xmax]
@@ -1259,7 +1260,8 @@ class RandomPerspective:
         labels["resized_shape"] = img.shape[:2]
         return labels
 
-    def box_candidates(self, box1, box2, wh_thr=2, ar_thr=100, area_thr=0.1, eps=1e-16):
+    @staticmethod
+    def box_candidates(box1, box2, wh_thr=2, ar_thr=100, area_thr=0.1, eps=1e-16):
         """
         Compute candidate boxes for further processing based on size and aspect ratio criteria.
 
@@ -1281,7 +1283,7 @@ class RandomPerspective:
             eps (float): Small epsilon value to prevent division by zero.
 
         Returns:
-            (numpy.ndarray): Boolean array of shape (n,) indicating which boxes are candidates.
+            (numpy.ndarray): Boolean array of shape (n) indicating which boxes are candidates.
                 True values correspond to boxes that meet all criteria.
 
         Examples:
@@ -1318,7 +1320,7 @@ class RandomHSV:
         >>> augmenter = RandomHSV(hgain=0.5, sgain=0.5, vgain=0.5)
         >>> image = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
         >>> labels = {"img": image}
-        >>> augmented_labels = augmenter(labels)
+        >>> augmenter(labels)
         >>> augmented_image = augmented_labels["img"]
     """
 
@@ -1335,7 +1337,7 @@ class RandomHSV:
 
         Examples:
             >>> hsv_aug = RandomHSV(hgain=0.5, sgain=0.5, vgain=0.5)
-            >>> augmented_image = hsv_aug(image)
+            >>> hsv_aug(image)
         """
         self.hgain = hgain
         self.sgain = sgain
@@ -1417,7 +1419,7 @@ class RandomFlip:
 
         Examples:
             >>> flip = RandomFlip(p=0.5, direction="horizontal")
-            >>> flip = RandomFlip(p=0.7, direction="vertical", flip_idx=[1, 0, 3, 2, 5, 4])
+            >>> flip_with_idx = RandomFlip(p=0.7, direction="vertical", flip_idx=[1, 0, 3, 2, 5, 4])
         """
         assert direction in {"horizontal", "vertical"}, f"Support direction `horizontal` or `vertical`, got {direction}"
         assert 0 <= p <= 1.0, f"The probability should be in range [0, 1], but got {p}."
@@ -1591,14 +1593,15 @@ class LetterBox:
             labels["ratio_pad"] = (labels["ratio_pad"], (left, top))  # for evaluation
 
         if len(labels):
-            labels = self._update_labels(labels, ratio, dw, dh)
+            labels = self._update_labels(labels, ratio, left, top)
             labels["img"] = img
             labels["resized_shape"] = new_shape
             return labels
         else:
             return img
 
-    def _update_labels(self, labels, ratio, padw, padh):
+    @staticmethod
+    def _update_labels(labels, ratio, padw, padh):
         """
         Updates labels after applying letterboxing to an image.
 
@@ -1847,7 +1850,7 @@ class Albumentations:
                 A.CLAHE(p=0.01),
                 A.RandomBrightnessContrast(p=0.0),
                 A.RandomGamma(p=0.0),
-                A.ImageCompression(quality_lower=75, p=0.0),
+                A.ImageCompression(quality_range=(75, 100), p=0.0),
             ]
 
             # Compose transforms
@@ -1857,6 +1860,9 @@ class Albumentations:
                 if self.contains_spatial
                 else A.Compose(T)
             )
+            if hasattr(self.transform, "set_random_seed"):
+                # Required for deterministic transforms in albumentations>=1.4.21
+                self.transform.set_random_seed(torch.initial_seed())
             LOGGER.info(prefix + ", ".join(f"{x}".replace("always_apply=False, ", "") for x in T if x.p))
         except ImportError:  # package not installed, skip
             pass
@@ -2019,7 +2025,7 @@ class Format:
         Returns:
             (Dict): A dictionary with formatted data, including:
                 - 'img': Formatted image tensor.
-                - 'cls': Class labels tensor.
+                - 'cls': Class label's tensor.
                 - 'bboxes': Bounding boxes tensor in the specified format.
                 - 'masks': Instance masks tensor (if return_mask is True).
                 - 'keypoints': Keypoints tensor (if return_keypoint is True).
@@ -2111,10 +2117,9 @@ class Format:
             h (int): Height of the image.
 
         Returns:
-            (tuple): Tuple containing:
-                masks (numpy.ndarray): Bitmap masks with shape (N, H, W) or (1, H, W) if mask_overlap is True.
-                instances (Instances): Updated instances object with sorted segments if mask_overlap is True.
-                cls (numpy.ndarray): Updated class labels, sorted if mask_overlap is True.
+            masks (numpy.ndarray): Bitmap masks with shape (N, H, W) or (1, H, W) if mask_overlap is True.
+            instances (Instances): Updated instances object with sorted segments if mask_overlap is True.
+            cls (numpy.ndarray): Updated class labels, sorted if mask_overlap is True.
 
         Notes:
             - If self.mask_overlap is True, masks are overlapped and sorted by area.
@@ -2280,7 +2285,7 @@ def v8_transforms(dataset, imgsz, hyp, stretch=False):
     Args:
         dataset (Dataset): The dataset object containing image data and annotations.
         imgsz (int): The target image size for resizing.
-        hyp (Dict): A dictionary of hyperparameters controlling various aspects of the transformations.
+        hyp (Namespace): A dictionary of hyperparameters controlling various aspects of the transformations.
         stretch (bool): If True, applies stretching to the image. If False, uses LetterBox resizing.
 
     Returns:
@@ -2288,8 +2293,9 @@ def v8_transforms(dataset, imgsz, hyp, stretch=False):
 
     Examples:
         >>> from ultralytics.data.dataset import YOLODataset
+        >>> from ultralytics.utils import IterableSimpleNamespace
         >>> dataset = YOLODataset(img_path="path/to/images", imgsz=640)
-        >>> hyp = {"mosaic": 1.0, "copy_paste": 0.5, "degrees": 10.0, "translate": 0.2, "scale": 0.9}
+        >>> hyp = IterableSimpleNamespace(mosaic=1.0, copy_paste=0.5, degrees=10.0, translate=0.2, scale=0.9)
         >>> transforms = v8_transforms(dataset, imgsz=640, hyp=hyp)
         >>> augmented_data = transforms(dataset[0])
     """
@@ -2385,13 +2391,135 @@ def classify_transforms(
         tfl = [T.Resize(scale_size)]
     tfl.extend(
         [
-            T.CenterCrop(size),
+            ClassifyLetterbox(size),
             T.ToTensor(),
             T.Normalize(mean=torch.tensor(mean), std=torch.tensor(std)),
         ]
     )
     return T.Compose(tfl)
 
+import torch
+import math
+import warnings
+from typing import Optional, Sequence, Tuple
+
+import torch.nn as nn
+from torchvision.transforms.functional import (
+    get_dimensions,
+    resize,
+    to_pil_image,
+    to_tensor,
+    pad
+)
+from torchvision.transforms import InterpolationMode
+
+def _setup_size(size, error_msg="Please provide only two dimensions (h, w) for size."):
+    """
+    RandomResizedCrop 등에서 사용하는 유틸 함수 예시입니다.
+    단일 정수 -> (size, size)로 변환,
+    1길이 시퀀스 -> (size[0], size[0])로 변환 등의 처리를 합니다.
+    """
+    if isinstance(size, int):
+        return (size, size)
+    if isinstance(size, Sequence) and len(size) == 1:
+        return (size[0], size[0])
+    if isinstance(size, Sequence) and len(size) == 2:
+        return size
+    else:
+        raise ValueError(error_msg)
+
+class ClassifyLetterbox(nn.Module):
+    """
+    Letterbox 방식을 이용하여 이미지의 종횡비를 유지한 채로 
+    주어진 size에 맞게 (가로, 세로) 리사이즈 + 패딩을 진행합니다.
+
+    예시 사용:
+        transform = ClassifyLetterbox(size=(224, 224))
+
+    Args:
+        size (int or Sequence): 출력 이미지의 (height, width).
+            int로 주어지면 (size, size)로 처리합니다.
+        fill (int or Tuple[int]): 패딩에 사용할 값. 정수 또는 (R, G, B).
+        interpolation (InterpolationMode): 이미지 리사이즈 시 사용할 보간법.
+        antialias (bool): 텐서 이미지에 bilinear, bicubic 모드로 리사이즈 시
+            안티에일리어싱 적용 여부.
+            (torchvision 0.17부터 True가 기본값)
+    """
+
+    def __init__(
+        self,
+        size,
+        fill=(114,114,114),
+        interpolation=InterpolationMode.BILINEAR,
+        antialias: Optional[bool] = True,
+    ):
+        super().__init__()
+        self.size = _setup_size(size, error_msg="Please provide only two dimensions (h, w) for size.")
+        self.fill = fill
+        self.interpolation = interpolation
+        self.antialias = antialias
+
+    def forward(self, img: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            img (PIL Image or Tensor): 변환할 이미지
+
+        Returns:
+            PIL Image 또는 Tensor: Letterbox로 리사이즈 및 패딩된 이미지
+        """
+        # img의 높이(height), 너비(width) 추출
+        _, orig_h, orig_w = get_dimensions(img)
+
+        target_h, target_w = self.size
+
+        # 원본 비율과 목표 비율
+        orig_ratio = orig_w / orig_h
+        target_ratio = target_w / target_h
+
+        # Letterbox 방식:
+        # (1) 원본비가 목표비보다 크다면, 너비 기준으로 스케일 조정
+        # (2) 원본비가 목표비보다 작거나 같다면, 높이 기준으로 스케일 조정
+        if orig_ratio > target_ratio:
+            # 원본이 더 가로로 길다면, 너비 맞춤
+            new_w = target_w
+            new_h = int(round(new_w / orig_ratio))
+        else:
+            # 원본이 세로로 길거나 딱 맞다면, 높이 맞춤
+            new_h = target_h
+            new_w = int(round(new_h * orig_ratio))
+
+        # (1) 먼저 resize를 통해 비율 유지를 한 상태로 맞춤
+        # Tensor형일 경우 interpolation, antialias가 적용됨
+        resized = resize(
+            img, 
+            (new_h, new_w), 
+            interpolation=self.interpolation, 
+            antialias=self.antialias
+        )
+
+        # (2) 패딩할 여백 계산
+        # 남은 공간을 가로/세로 중심에 위치하도록 패딩
+        pad_top = (target_h - new_h) // 2
+        pad_bottom = target_h - new_h - pad_top
+        pad_left = (target_w - new_w) // 2
+        pad_right = target_w - new_w - pad_left
+
+        # (3) 패딩 적용
+        # fill 값은 단일 정수(예: 0)나 튜플(R, G, B) 모두 가능
+        padded = pad(resized, (pad_left, pad_top, pad_right, pad_bottom), fill=self.fill)
+
+        return padded
+
+    def __repr__(self) -> str:
+        interpolate_str = (
+            self.interpolation.value
+            if isinstance(self.interpolation, InterpolationMode)
+            else str(self.interpolation)
+        )
+        return (
+            f"{self.__class__.__name__}(size={self.size}, fill={self.fill}, "
+            f"interpolation={interpolate_str}, antialias={self.antialias})"
+        )
 
 # Classification training augmentations --------------------------------------------------------------------------------
 def classify_augmentations(
@@ -2447,7 +2575,8 @@ def classify_augmentations(
     scale = tuple(scale or (0.08, 1.0))  # default imagenet scale range
     ratio = tuple(ratio or (3.0 / 4.0, 4.0 / 3.0))  # default imagenet ratio range
     interpolation = getattr(T.InterpolationMode, interpolation)
-    primary_tfl = [T.RandomResizedCrop(size, scale=scale, ratio=ratio, interpolation=interpolation)]
+    # primary_tfl = [T.RandomResizedCrop(size, scale=scale, ratio=(5,10), interpolation=interpolation)]
+    primary_tfl = [ClassifyLetterbox(size=size)]
     if hflip > 0.0:
         primary_tfl.append(T.RandomHorizontalFlip(p=hflip))
     if vflip > 0.0:
@@ -2463,7 +2592,7 @@ def classify_augmentations(
 
         if auto_augment == "randaugment":
             if TORCHVISION_0_11:
-                secondary_tfl.append(T.RandAugment(interpolation=interpolation))
+                secondary_tfl.append(T.RandAugment(interpolation=interpolation, fill = 114))
             else:
                 LOGGER.warning('"auto_augment=randaugment" requires torchvision >= 0.11.0. Disabling it.')
 
@@ -2494,7 +2623,7 @@ def classify_augmentations(
         T.RandomErasing(p=erasing, inplace=True),
     ]
 
-    return T.Compose(primary_tfl + secondary_tfl + final_tfl)
+    return T.Compose(secondary_tfl + primary_tfl + final_tfl)
 
 
 # NOTE: keep this class for backward compatibility
