@@ -2,11 +2,11 @@ task: classify  # (str) YOLO task, i.e. detect, segment, classify, pose
 mode: train  # (str) YOLO mode, i.e. train, val, predict, export, track, benchmark
 
 # Train settings -------------------------------------------------------------------------------------------------------
-model: yolov11m-cls.pt # (str, optional) path to model file, i.e. yolov8n.pt, yolov8n.yaml
+model: yolov11l-cls.pt # (str, optional) path to model file, i.e. yolov8n.pt, yolov8n.yaml
 data: /home/gpuadmin/repo/KISA/kisa-od-model-trainer/datasets/WallJumpClsDataset_v0.1.0
 project: KTTCls_v2.0.0 # (str, optional) project name
 name: artifacts # (str, optional) experiment name, results saved to 'project/name' directory
-epochs: 5  # (int) number of epochs to train for
+epochs: 2  # (int) number of epochs to train for
 patience: 200  # (int) epochs to wait for no observable improvement for early stopping of training
 batch: 512  # (int) number of images per batch (-1 for AutoBatch)
 imgsz: 
@@ -34,7 +34,7 @@ freeze: null  # (int | list, optional) freeze first n layers, or freeze list of 
 
 #Custom
 cos_lr: False  # (bool) use cosine learning rate scheduler
-optimizer: SGD  # (str) optimizer to use, choices=[SGD, Adam, Adamax, AdamW, NAdam, RAdam, RMSProp, auto]
+optimizer: auto  # (str) optimizer to use, choices=[SGD, Adam, Adamax, AdamW, NAdam, RAdam, RMSProp, auto]
 lr0: 0.01
 lrf: 0.005
 momentum: 0.937
